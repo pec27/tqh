@@ -1,3 +1,5 @@
+// Copyright 2025 Peter Edward Creasey
+
 // float3 (aligned)
 #include <stdint.h> // uint32_t
 #include "interval.h" // intervalf_s

@@ -1,3 +1,4 @@
+// Copyright 2025 Peter Edward Creasey
 #pragma once // Can be included from both 2d and 3d rays
 
 // Floating point intervals

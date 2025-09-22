@@ -1,3 +1,4 @@
+// Copyright 2025 Peter Edward Creasey
 #pragma once
 // Heightfield quadtree
 #include <stdint.h>

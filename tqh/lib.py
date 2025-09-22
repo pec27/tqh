@@ -1,3 +1,4 @@
+# Copyright 2025 Peter Edward Creasey
 # Load the C-library
 
 from __future__ import print_function, division, unicode_literals

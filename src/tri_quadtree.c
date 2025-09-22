@@ -1,3 +1,4 @@
+// Copyright 2025 Peter Edward Creasey
 #include "tri_quadtree.h"
 #include <math.h> // fabsf
 #include <float.h> // FLT_MIN

@@ -1,3 +1,4 @@
+// Copyright 2025 Peter Edward Creasey
 #ifndef NDEBUG
   #include <stdio.h>
 #endif

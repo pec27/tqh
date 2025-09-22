@@ -1,3 +1,4 @@
+// Copyright 2025 Peter Edward Creasey
 #include "float3.h"
 #include "heightfield_ray.h" // also quadtree_cursor_s
 #include <assert.h>

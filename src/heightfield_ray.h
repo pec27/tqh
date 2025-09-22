@@ -1,3 +1,4 @@
+// Copyright 2025 Peter Edward Creasey
 #include "tri_quadtree.h" // Raymarch through triangulation
 #include "heightfield.h"
 

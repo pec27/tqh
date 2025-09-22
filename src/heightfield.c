@@ -1,3 +1,5 @@
+// Copyright 2025 Peter Edward Creasey
+
 #include "interval.h"
 #include "heightfield.h"
 

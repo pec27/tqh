@@ -1,3 +1,4 @@
+// Copyright 2025 Peter Edward Creasey
 #include "heightfield_ray.h" // quadtree_cursor, heightfield_ray
 #include "heightfield_cursor.h"
 

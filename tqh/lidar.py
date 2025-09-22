@@ -1,7 +1,11 @@
+# Copyright 2025 Peter Edward Creasey
+
 import numpy as np
 from .lib import raytrace_shadows as check_occlusion, Heightfield
-
+from PIL import Image
 from sys import stdout
+from os import path
+import rasterio
 
 yellow = np.array((1.3, 1.1, 0.5))
 sky_blue = np.array((0.175, 0.41, 1.0))
@@ -81,25 +85,20 @@ def raytrace_perspective_heightfield(heights, x_scale, centre, light_dir, light_
         rgba = h.raytrace_image(pix_shape, top_left, delta_x, delta_y, x_scale,camera_pos, upsample, light_dir, light_clr, sky_clr)
         return rgba
 
-def test_perspective_shadow_lit(log, lidar_data, x_scale=0.5, save_name=None, upsample=1,     point = (7161, 7629), 
-                                camera_angles=(1.4*np.pi, -0.9, 35,0.4), light_dir = (-0.3,0.5,1.0), light_clr = yellow, sky_clr=sky_blue, pix_shape = (3600,2500), min_val=None, is_periodic=False):
+def perspective_shadow_lit(lidar_data, save_name=None, upsample=1, focus = (7161, 7629), 
+                                camera_angles=(1.4*np.pi, -0.9, 35,0.4), light_dir = (-0.3,0.5,1.0), light_clr = yellow, sky_clr=sky_blue, pix_shape = (3600,2500), is_periodic=False,log=stdout):
     
 
-    arr, subsample_lidar, left = lidar_data
+    arr, subsample_lidar, x_scale, left = lidar_data
 
     print('Heightfield of shape', arr.shape, file=log)
     # camera target
 
-    focus = [point[0] - left[0], point[1] - left[1]]
+    focus = [focus[0] - left[0], focus[1] - left[1]]
     if subsample_lidar > 1:
-        x_scale *= subsample_lidar
         focus = [focus[0]//subsample_lidar, focus[1]//subsample_lidar]
     print('Focus point in heightfield (%d,%d)'%(focus[0],focus[1]), file=log)
-    print('Used x_scale (after subsampling)', x_scale, file=log)
-    if min_val is None:
-        # Exclude the -9999 values
-        min_val = arr.ravel()[arr.ravel() > -9998].min()
-    arr = np.maximum(arr, min_val)
+
     
     print('Heightfield values in', arr.min(), arr.max())
     # Building texture
@@ -112,7 +111,7 @@ def test_perspective_shadow_lit(log, lidar_data, x_scale=0.5, save_name=None, up
     print('Displaying/saving', file=log)
 
     if save_name is not None:
-        from PIL import Image
+
         im = Image.fromarray(rgba)
         im.save(save_name)
     else:
@@ -229,9 +228,8 @@ def shadow_lit_rotation_movie(log, lidar_data, get_camera_trajectory, x_scale=0.
     heights = np.maximum(arr, min_val)
     
     print('Heightfield values in', heights.min(), heights.max())
-    # Building texture
-    from PIL import Image
 
+    # Building texture
     use_beams = True# pix_shape[0]*pix_shape[1] > 1e7
     if use_beams:
         print('Building Manhattan bounds for beams', file=log)
@@ -268,3 +266,52 @@ def shadow_lit_rotation_movie(log, lidar_data, get_camera_trajectory, x_scale=0.
             print('Saving', save_name, file=log)
             im = Image.fromarray(rgba)
             im.save(save_name)
+
+def load_tiles(names, base_dir='.', subsample_lidar=1, left=(0,0), right=(10000,10000), min_val=None, log=stdout):
+
+    arr = None
+    x_scale = 1
+    ims = [[path.join(base_dir, name) for name in row] for row in names]
+
+    files = [[rasterio.open(im) for im in row] for row in ims]
+
+    # Size of v[::subsample_lidar]
+    subsampled_size = lambda x : (x+subsample_lidar - 1)//subsample_lidar
+    # Get the bounds
+    v0 = [subsampled_size(row[0].shape[0]) for row in files]
+    v1 = [subsampled_size(im.shape[1]) for im in files[0]]
+
+    arr = np.empty((sum(v0), sum(v1)), dtype=np.float32)
+
+    bad_data = -1e10
+    max_data = -1e10
+    min_data = 1e10
+    
+    for i,row in enumerate(files):
+        for j,f in enumerate(row):
+            x_scale = float(f.res[0]) # currently assume pixels square
+            bad_data = max(bad_data, float(f.nodata))
+
+            i0,i1 = (sum(v0[:i]), sum(v0[:i+1]))
+            j0,j1 = (sum(v1[:j]), sum(v1[:j+1]))
+            print('Reading %d,%d from'%(i1-i0,j1-j0),names[i][j], file=log)
+            v = f.read()[0,::subsample_lidar,::subsample_lidar]
+            good_data = v.ravel()[v.ravel()>bad_data+1]
+            min_data = min(min_data, good_data.min())
+            max_data = max(max_data, good_data.max())
+            arr[i0:i1, j0:j1] = v
+            f.close()
+
+    print('Heights in %.2f to %.2f cells'%(min_data, max_data), file=log)
+    if min_val is None:
+        min_val = min_data
+    else:
+        print('Clamping to at least', min_val, file=log)
+    np.maximum(arr, min_val, out=arr)
+
+    print('x_scale', x_scale, file=log)
+    if subsample_lidar != 1:
+        x_scale = x_scale * subsample_lidar        
+        print('Used x_scale (after subsampling)', x_scale, file=log)    
+
+    return (arr, subsample_lidar, x_scale, left)
